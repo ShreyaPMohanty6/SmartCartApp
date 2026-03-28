@@ -94,21 +94,63 @@
   .item-icon { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg,rgba(108,99,255,.2),rgba(255,101,132,.2)); display: grid; place-items: center; font-size: 1.1rem; flex-shrink: 0; }
   .item-info { flex: 1; }
   .item-name { font-size: .9rem; font-weight: 500; color: var(--text); text-transform: capitalize; }
-  .item-qty  { font-size: .78rem; color: var(--muted); margin-top: 2px; }
-  .item-price { font-family: 'Syne', sans-serif; font-size: .95rem; font-weight: 700; color: var(--text); }
-  .btn-delete {
-    background: rgba(255,77,109,.12); border: 1px solid rgba(255,77,109,.25);
-    color: var(--danger); width: 32px; height: 32px; border-radius: 8px;
-    cursor: pointer; font-size: 1rem; display: grid; place-items: center;
-    transition: all .2s; flex-shrink: 0;
+  .item-unit-price { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+  .item-total-price { font-family: 'Syne', sans-serif; font-size: .95rem; font-weight: 700; color: var(--text); white-space: nowrap; }
+
+  /* Quantity counter */
+  .qty-control {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
   }
-  .btn-delete:hover { background: rgba(255,77,109,.25); transform: scale(1.05); }
-  .btn-delete:disabled { opacity: .4; cursor: default; transform: none; }
+  .qty-btn {
+    width: 32px; height: 34px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    display: grid; place-items: center;
+    line-height: 1;
+    font-weight: 600;
+  }
+  .qty-btn:hover { background: rgba(108,99,255,.18); color: var(--accent); }
+  .qty-btn:active { background: rgba(108,99,255,.3); }
+  .qty-btn:disabled { opacity: .35; cursor: default; }
+  .qty-btn.minus:hover { background: rgba(255,77,109,.15); color: var(--danger); }
+  .qty-num {
+    min-width: 28px;
+    text-align: center;
+    font-family: 'Syne', sans-serif;
+    font-size: .92rem;
+    font-weight: 700;
+    color: var(--text);
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    height: 34px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  /* spinner inside qty-num */
+  .qty-num .mini-spin {
+    width: 13px; height: 13px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+
   .empty-state { padding: 2.5rem 1.4rem; text-align: center; color: var(--muted); font-size: .9rem; }
   .empty-state span { font-size: 2rem; display: block; margin-bottom: .5rem; }
   .loading-state { padding: 2rem 1.4rem; text-align: center; color: var(--muted); font-size: .85rem; }
   .spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto .8rem; }
   @keyframes spin { to{transform:rotate(360deg)} }
+
   .summary-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.4rem; position: sticky; top: 1rem; height: fit-content; }
   .summary-card h2 { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 1.2rem; }
   .summary-row { display: flex; justify-content: space-between; font-size: .85rem; color: var(--muted); margin-bottom: .7rem; }
@@ -146,31 +188,6 @@
   .paid-banner span { font-size: 1.4rem; display: block; margin-bottom: .3rem; }
   .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--card); border: 1px solid var(--border); padding: .7rem 1.4rem; border-radius: 99px; font-size: .85rem; color: var(--text); box-shadow: 0 8px 30px rgba(0,0,0,.4); transition: transform .3s cubic-bezier(.34,1.56,.64,1); z-index: 99; white-space: nowrap; }
   .toast.show { transform: translateX(-50%) translateY(0); }
-  .qty-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255,255,255,0.05);
-  padding: 4px 8px;
-  border-radius: 8px;
-}
-
-.qty-control button {
-  width: 26px;
-  height: 26px;
-  border: none;
-  border-radius: 6px;
-  background: var(--accent);
-  color: white;
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-.qty-control span {
-  min-width: 20px;
-  text-align: center;
-  font-weight: 600;
-}
 </style>
 </head>
 <body>
@@ -266,12 +283,10 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- ✅ Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase, ref, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-// 🔥 REPLACE THESE WITH YOUR FIREBASE CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyAMNfE_uY1nmuAvbVW9gclisL31z-y6bMs",
   authDomain: "iot-project-6b7f8.firebaseapp.com",
@@ -283,7 +298,7 @@ const firebaseConfig = {
   measurementId: "G-1HT0WWNJEP"
 };
 
-const CART_ID = "Cart_01"; // ← change if your node is named differently
+const CART_ID = "Cart_01";
 
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
@@ -291,37 +306,40 @@ const cartRef = ref(db, CART_ID);
 
 document.getElementById("cartIdLabel").textContent = CART_ID;
 
-const ICONS = { default:"📦", fruit:"🍎", milk:"🥛", bread:"🍞", water:"💧", juice:"🧃", egg:"🥚", rice:"🌾", coffee:"☕", tea:"🍵" };
+const ICONS = {
+  default:"📦", fruit:"🍎", milk:"🥛", bread:"🍞", water:"💧",
+  juice:"🧃", egg:"🥚", rice:"🌾", coffee:"☕", tea:"🍵",
+  biscuit:"🍪", chocolate:"🍫", sugar:"🧂", soap:"🧼", oil:"🫙"
+};
 function getIcon(name) {
   const n = (name||"").toLowerCase();
   for (const [k,v] of Object.entries(ICONS)) if (n.includes(k)) return v;
   return ICONS.default;
 }
 
+// Track which keys are currently being updated to prevent double-clicks
+const updating = new Set();
+
 onValue(cartRef, (snap) => {
   const data = snap.val();
-
-  const itemListEl = document.getElementById("itemList");
+  const itemListEl  = document.getElementById("itemList");
   const itemCountEl = document.getElementById("itemCount");
-  const subtotalEl = document.getElementById("subtotal");
-  const totalEl = document.getElementById("totalDisplay");
+  const subtotalEl  = document.getElementById("subtotal");
+  const totalEl     = document.getElementById("totalDisplay");
 
-  // 🧼 RESET UI FIRST (prevents stale values)
-  itemListEl.innerHTML = `
-    <div class="empty-state"><span>🛒</span>Cart is empty</div>
-  `;
+  // Reset UI
+  itemListEl.innerHTML = `<div class="empty-state"><span>🛒</span>Cart is empty</div>`;
   itemCountEl.textContent = "0";
-  subtotalEl.textContent = "₹0";
-  totalEl.textContent = "₹0";
+  subtotalEl.textContent  = "₹0";
+  totalEl.textContent     = "₹0";
 
   if (!data) return;
 
-  const items = data.items || {};
+  const items  = data.items || {};
   const isPaid = data.payment_status === "PAID";
+  const keys   = Object.keys(items);
 
-  const keys = Object.keys(items);
-
-  // 🔄 STATUS BAR
+  // Status bar
   const bar = document.getElementById("statusBar");
   if (isPaid) {
     bar.className = "status-bar paid";
@@ -331,86 +349,90 @@ onValue(cartRef, (snap) => {
     document.getElementById("statusText").textContent = "Payment Pending";
   }
 
-  // 🧮 CALCULATE TOTAL FROM ITEMS (REAL FIX)
   let total = 0;
 
   if (keys.length > 0) {
     itemListEl.innerHTML = keys.map(key => {
-      const item = items[key];
-      const name = item.name || key;
-      const price = item.price || 0;
-      const qty = item.qty || item.quantity || 1;
-
-      total += price * qty; // ✅ real calculation
+      const item  = items[key];
+      const name  = item.name || key;
+      const price = Number(item.price) || 0;
+      // ✅ Firebase uses "quantity" field
+      const qty   = Number(item.quantity) || 1;
+      const lineTotal = price * qty;
+      total += lineTotal;
 
       return `
         <div class="item-row" id="row-${key}">
           <div class="item-icon">${getIcon(name)}</div>
           <div class="item-info">
             <div class="item-name">${name}</div>
-            <div class="item-qty">Qty: ${qty}</div>
+            <div class="item-unit-price">₹${price} each</div>
           </div>
-          <div class="item-price">₹${price}</div>
+          <div class="item-total-price" id="line-${key}">₹${lineTotal}</div>
           <div class="qty-control">
-  <button onclick="updateQty('${key}', -1)">−</button>
-  <span>${qty}</span>
-  <button onclick="updateQty('${key}', 1)">+</button>
-</div>
+            <button class="qty-btn minus" id="minus-${key}"
+              onclick="window.updateQty('${key}', -1)"
+              ${isPaid ? 'disabled' : ''}>−</button>
+            <div class="qty-num" id="qnum-${key}">${qty}</div>
+            <button class="qty-btn plus" id="plus-${key}"
+              onclick="window.updateQty('${key}', 1)"
+              ${isPaid ? 'disabled' : ''}>+</button>
+          </div>
         </div>`;
     }).join("");
   }
 
-  // ✅ UPDATE TOTALS (always correct now)
   subtotalEl.textContent = `₹${total}`;
-  totalEl.textContent = `₹${total}`;
-
+  totalEl.textContent    = `₹${total}`;
   itemCountEl.textContent = keys.length;
 
-  // 💳 PAYMENT UI
-  document.getElementById("paymentSection").style.display = isPaid ? "none" : "block";
-  document.getElementById("paidBanner").style.display = isPaid ? "block" : "none";
-  document.getElementById("payBtn").disabled = isPaid || keys.length === 0;
-});
-
   document.getElementById("paymentSection").style.display = isPaid ? "none"  : "block";
-  document.getElementById("paidBanner").style.display      = isPaid ? "block" : "none";
+  document.getElementById("paidBanner").style.display     = isPaid ? "block" : "none";
   document.getElementById("payBtn").disabled = isPaid || keys.length === 0;
 });
 
+// ✅ updateQty: reads current "quantity" from DB, increments or removes
 window.updateQty = async (key, change) => {
+  if (updating.has(key)) return; // debounce rapid clicks
+  updating.add(key);
+
+  // Show spinner in qty display while updating
+  const qnum  = document.getElementById(`qnum-${key}`);
+  const minus = document.getElementById(`minus-${key}`);
+  const plus  = document.getElementById(`plus-${key}`);
+  if (qnum) qnum.innerHTML = '<div class="mini-spin"></div>';
+  if (minus) minus.disabled = true;
+  if (plus)  plus.disabled  = true;
+
   try {
     const itemRef = ref(db, `${CART_ID}/items/${key}`);
 
-    onValue(itemRef, async (snap) => {
-      const item = snap.val();
-      if (!item) return;
+    // One-time read of current quantity
+    await new Promise((resolve, reject) => {
+      onValue(itemRef, async (snap) => {
+        const item = snap.val();
+        if (!item) { resolve(); return; }
 
-      let qty = item.qty || item.quantity || 1;
-      qty += change;
+        // ✅ Use "quantity" field (matching your Firebase schema)
+        let qty = Number(item.quantity) || 1;
+        qty += change;
 
-      if (qty <= 0) {
-        // remove item if qty becomes 0
-        await remove(itemRef);
-        showToast("Item removed");
-      } else {
-        await update(itemRef, { qty: qty });
-      }
-    }, { onlyOnce: true });
+        if (qty <= 0) {
+          await remove(itemRef);
+          showToast(`${item.name || key} removed`);
+        } else {
+          // ✅ Write back as "quantity"
+          await update(itemRef, { quantity: qty });
+        }
+        resolve();
+      }, { onlyOnce: true });
+    });
 
   } catch (e) {
     showToast("Error: " + e.message);
-  }
-};
-
-window.deleteItem = async (key) => {
-  const btn = document.querySelector(`#row-${key} .btn-delete`);
-  if (btn) btn.disabled = true;
-  try {
-    await remove(ref(db, `${CART_ID}/items/${key}`));
-    showToast("Item removed");
-  } catch(e) {
-    showToast("Error: " + e.message);
-    if (btn) btn.disabled = false;
+  } finally {
+    updating.delete(key);
+    // Firebase onValue will re-render, so no need to manually restore
   }
 };
 
