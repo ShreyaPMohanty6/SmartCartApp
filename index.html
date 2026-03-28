@@ -146,6 +146,31 @@
   .paid-banner span { font-size: 1.4rem; display: block; margin-bottom: .3rem; }
   .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--card); border: 1px solid var(--border); padding: .7rem 1.4rem; border-radius: 99px; font-size: .85rem; color: var(--text); box-shadow: 0 8px 30px rgba(0,0,0,.4); transition: transform .3s cubic-bezier(.34,1.56,.64,1); z-index: 99; white-space: nowrap; }
   .toast.show { transform: translateX(-50%) translateY(0); }
+  .qty-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.05);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.qty-control button {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.qty-control span {
+  min-width: 20px;
+  text-align: center;
+  font-weight: 600;
+}
 </style>
 </head>
 <body>
@@ -326,7 +351,11 @@ onValue(cartRef, (snap) => {
             <div class="item-qty">Qty: ${qty}</div>
           </div>
           <div class="item-price">₹${price}</div>
-          <button class="btn-delete" onclick="window.deleteItem('${key}')" ${isPaid?'disabled':''}>✕</button>
+          <div class="qty-control">
+  <button onclick="updateQty('${key}', -1)">−</button>
+  <span>${qty}</span>
+  <button onclick="updateQty('${key}', 1)">+</button>
+</div>
         </div>`;
     }).join("");
   }
@@ -347,6 +376,31 @@ onValue(cartRef, (snap) => {
   document.getElementById("paidBanner").style.display      = isPaid ? "block" : "none";
   document.getElementById("payBtn").disabled = isPaid || keys.length === 0;
 });
+
+window.updateQty = async (key, change) => {
+  try {
+    const itemRef = ref(db, `${CART_ID}/items/${key}`);
+
+    onValue(itemRef, async (snap) => {
+      const item = snap.val();
+      if (!item) return;
+
+      let qty = item.qty || item.quantity || 1;
+      qty += change;
+
+      if (qty <= 0) {
+        // remove item if qty becomes 0
+        await remove(itemRef);
+        showToast("Item removed");
+      } else {
+        await update(itemRef, { qty: qty });
+      }
+    }, { onlyOnce: true });
+
+  } catch (e) {
+    showToast("Error: " + e.message);
+  }
+};
 
 window.deleteItem = async (key) => {
   const btn = document.querySelector(`#row-${key} .btn-delete`);
